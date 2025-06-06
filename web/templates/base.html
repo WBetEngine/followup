@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="id" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>{{ .Title }} - Admin Panel</title>
+    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .sidebar {
+            transition: width 0.3s ease, transform 0.3s ease;
+            z-index: 50;
+        }
+        .sidebar-collapsed {
+            width: 5rem;
+        }
+        .content-expanded {
+            margin-left: 5rem;
+        }
+        
+        /* Mobile sidebar */
+        @media (max-width: 768px) {
+            .sidebar {
+                transform: translateX(-100%);
+                width: 80%;
+                max-width: 260px;
+            }
+            .sidebar.mobile-visible {
+                transform: translateX(0);
+            }
+            .content-wrapper {
+                margin-left: 0 !important;
+            }
+            .mobile-overlay {
+                display: none;
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                background-color: rgba(0, 0, 0, 0.5);
+                z-index: 40;
+            }
+            .mobile-overlay.active {
+                display: block;
+            }
+        }
+
+        /* Fix text size in mobile */
+        @media screen and (-webkit-min-device-pixel-ratio: 0) { 
+            select,
+            textarea,
+            input {
+                font-size: 16px;
+            }
+        }
+    </style>
+    {{ block "extra_css" . }}{{ end }}
+</head>
+<body class="h-full bg-gray-50">
+    <div class="min-h-full">
+        <!-- Mobile Menu Overlay -->
+        <div id="mobile-overlay" class="mobile-overlay"></div>
+        
+        <!-- Sidebar -->
+        <aside id="sidebar" class="sidebar fixed inset-y-0 left-0 w-64 bg-white border-r shadow-sm flex flex-col">
+            <div class="p-4 border-b flex items-center justify-between">
+                <div class="flex items-center space-x-2">
+                    <i class="fas fa-chart-line text-xl text-blue-600"></i>
+                    <span id="brand-text" class="font-bold text-lg">Admin Panel</span>
+                </div>
+                <button id="collapse-btn" class="p-1 rounded-lg hover:bg-gray-100 hidden md:block">
+                    <i class="fas fa-bars"></i>
+                </button>
+                <button id="close-mobile-menu" class="p-1 rounded-lg hover:bg-gray-100 md:hidden">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            
+            <nav class="flex-1 py-4 px-2 overflow-y-auto">
+                <div class="space-y-1">
+                    {{ $allowedKeys := .Data.AllowedMenuKeys }}
+                    {{ $activePage := .Active }}
+                    {{ $currentGroup := "" }} {{/* Variabel untuk melacak grup saat ini */}}
+
+                    {{ range .Data.AllMenuItems }} {{/* Asumsi .Data.AllMenuItems sudah dalam urutan global yang benar */}}
+                        {{ if isMenuAllowed .Key $allowedKeys }}
+                            {{ if .Group }} {{/* Item ini adalah bagian dari grup */}}
+                                {{ if ne .Group $currentGroup }}
+                                    {{/* Ini adalah item pertama dari grup baru, atau grupnya berbeda dari sebelumnya */}}
+                                    {{ if $currentGroup }} {{/* Jika ada grup sebelumnya yang terbuka, tutup dulu <ul> nya */}}
+                                        </ul>
+                                    </div>
+                                    {{ end }}
+                                    {{/* Mulai grup baru */}}
+                                    <div class="pt-2">
+                                        <div class="flex items-center p-2 text-gray-500">
+                                            {{/* Menggunakan ikon dari item menu pertama dalam grup untuk ikon grup */}}
+                                            <i class="{{ .Icon }} w-5 text-center"></i> 
+                                            <span class="menu-text ml-3 font-semibold">{{ .Group }}</span>
+                                        </div>
+                                        <ul class="pl-7 mt-1 space-y-1">
+                                    {{ $currentGroup = .Group }}
+                                {{ end }}
+                                {{/* Render item menu di dalam <ul> grup */}}
+                                <li>
+                                    <a href="{{ .Path }}" class="flex items-center p-2 text-gray-700 hover:bg-gray-100 rounded-lg {{ if or (eq $activePage .Key) (eq $activePage (lower .Name)) }}bg-blue-50 text-blue-700{{ end }}">
+                                        <i class="{{ .Icon }} w-5 text-center"></i>
+                                        <span class="menu-text ml-3">{{ .Name }}</span>
+                                    </a>
+                                </li>
+                            {{ else }}
+                                {{/* Item ini tidak memiliki grup (menu level atas) */}}
+                                {{ if $currentGroup }} {{/* Jika ada grup sebelumnya yang terbuka, tutup dulu <ul> nya */}}
+                                    </ul>
+                                </div>
+                                {{ $currentGroup = "" }} {{/* Reset grup saat ini */}}
+                                {{ end }}
+                                <a href="{{ .Path }}" class="flex items-center p-2 text-gray-700 hover:bg-gray-100 rounded-lg {{ if or (eq $activePage .Key) (eq $activePage (lower .Name)) }}bg-blue-50 text-blue-700{{ end }}">
+                                    <i class="{{ .Icon }} w-5 text-center"></i>
+                                    <span class="menu-text ml-3">{{ .Name }}</span>
+                                </a>
+                            {{ end }}
+                        {{ end }}
+                    {{ end }}
+                    {{ if $currentGroup }} {{/* Tutup tag <ul> dan <div> terakhir jika masih ada grup yang terbuka */}}
+                        </ul>
+                    </div>
+                    {{ end }}
+                </div>
+            </nav>
+            
+            <div class="p-4 border-t">
+                <a href="/logout" class="flex items-center p-2 text-gray-700 hover:bg-gray-100 rounded-lg">
+                    <i class="fas fa-sign-out-alt w-5 text-center"></i>
+                    <span class="menu-text ml-3">Keluar</span>
+                </a>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <div id="content" class="flex-1 ml-0 md:ml-64 transition-all duration-300 content-wrapper">
+            <!-- Header -->
+            <header class="bg-white shadow-sm sticky top-0 z-10">
+                <div class="flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4">
+                    <div class="flex items-center space-x-2 sm:space-x-4">
+                        <button id="mobile-menu-btn" class="p-2 rounded-lg text-gray-700 md:hidden">
+                            <i class="fas fa-bars"></i>
+                        </button>
+                        <h2 class="text-lg sm:text-xl font-semibold text-gray-800 truncate">{{ .Title }}</h2>
+                    </div>
+                    
+                    <div class="flex items-center space-x-2 sm:space-x-4">
+                        <div class="relative">
+                            <button class="p-2 hover:bg-gray-100 rounded-full">
+                                <i class="fas fa-bell text-gray-500"></i>
+                            </button>
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            <div class="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center text-white">
+                                <i class="fas fa-user"></i>
+                            </div>
+                            <span class="text-sm font-medium hidden sm:inline">{{ .UserName }}</span>
+                        </div>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Content Area -->
+            <main class="p-4 sm:p-6">
+                {{ template "content" . }}
+            </main>
+            
+            <!-- Footer -->
+            <footer class="bg-white border-t p-4 text-center text-xs sm:text-sm text-gray-500">
+                &copy; 2024 Sistem Followup. All rights reserved.
+            </footer>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const sidebar = document.getElementById('sidebar');
+            const content = document.getElementById('content');
+            const collapseBtn = document.getElementById('collapse-btn');
+            const brandText = document.getElementById('brand-text');
+            const menuTexts = document.querySelectorAll('.menu-text');
+            const mobileMenuBtn = document.getElementById('mobile-menu-btn');
+            const closeMobileMenuBtn = document.getElementById('close-mobile-menu');
+            const mobileOverlay = document.getElementById('mobile-overlay');
+            
+            // Desktop sidebar collapse
+            collapseBtn.addEventListener('click', function() {
+                sidebar.classList.toggle('sidebar-collapsed');
+                content.classList.toggle('content-expanded');
+                
+                if (sidebar.classList.contains('sidebar-collapsed')) {
+                    brandText.classList.add('hidden');
+                    menuTexts.forEach(text => text.classList.add('hidden'));
+                } else {
+                    brandText.classList.remove('hidden');
+                    menuTexts.forEach(text => text.classList.remove('hidden'));
+                }
+            });
+            
+            // Mobile menu toggle
+            mobileMenuBtn.addEventListener('click', function() {
+                sidebar.classList.add('mobile-visible');
+                mobileOverlay.classList.add('active');
+                document.body.style.overflow = 'hidden';
+            });
+            
+            // Close mobile menu
+            function closeMobileMenu() {
+                sidebar.classList.remove('mobile-visible');
+                mobileOverlay.classList.remove('active');
+                document.body.style.overflow = '';
+            }
+            
+            closeMobileMenuBtn.addEventListener('click', closeMobileMenu);
+            mobileOverlay.addEventListener('click', closeMobileMenu);
+            
+            // Close menu when clicking menu items on mobile
+            const menuItems = document.querySelectorAll('nav a');
+            menuItems.forEach(item => {
+                item.addEventListener('click', function() {
+                    if (window.innerWidth < 768) {
+                        closeMobileMenu();
+                    }
+                });
+            });
+            
+            // Handle resize events
+            window.addEventListener('resize', function() {
+                if (window.innerWidth >= 768) {
+                    // Reset mobile menu state on desktop
+                    sidebar.classList.remove('mobile-visible');
+                    mobileOverlay.classList.remove('active');
+                    document.body.style.overflow = '';
+                }
+            });
+        });
+    </script>
+    {{ block "scripts" . }}{{ end }}
+</body>
+</html> 

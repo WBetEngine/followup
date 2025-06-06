@@ -1,0 +1,42 @@
+# Konfigurasi Server
+server:
+  port: ":8080" # Dapat di-override oleh SERVER_PORT
+  host: "0.0.0.0"
+  read_timeout: 15 # In seconds
+  write_timeout: 15 # In seconds
+  idle_timeout: 60 # In seconds
+
+# Konfigurasi Database
+database:
+  driver: "postgres"
+  url: "" # Akan di-override oleh env var DATABASE_URL
+  # Konfigurasi berikut hanya digunakan jika DATABASE_URL tidak diset
+  host: "localhost" # Placeholder
+  port: "5432"       # Placeholder
+  user: ""           # Placeholder, akan diambil dari DATABASE_URL
+  password: ""       # Placeholder, akan diambil dari DATABASE_URL
+  dbname: ""         # Placeholder, akan diambil dari DATABASE_URL
+  sslmode: "disable"  # Sesuaikan jika perlu, bisa di-override dari DATABASE_URL
+  max_open_conns: 50
+  max_idle_conns: 10
+  conn_max_lifetime_minutes: 15
+
+# Konfigurasi Autentikasi
+auth:
+  jwt_secret: "" # WAJIB di-override oleh env var JWT_SECRET di produksi
+  jwt_expiration: 720 # 30 hari dalam jam, sesuaikan jika perlu
+
+# Konfigurasi Aplikasi
+app:
+  name: "Followup System"
+  environment: "production" # Set ke production
+  log_level: "info"       # Set ke info untuk produksi
+  static_dir: "./web/static"
+  templates_dir: "./web/templates"
+  max_upload_size: 10485760 # 10 MB
+  allowed_domains: "" # Sesuaikan domain Anda di sini jika perlu, pisahkan dengan koma. Kosongkan untuk mengizinkan dari host aplikasi.
+
+# Konfigurasi Session
+session:
+  key: ""    # WAJIB di-override oleh env var SESSION_KEY di produksi
+  max_age: 2592000 # 30 hari dalam detik (30 * 24 * 60 * 60) 

@@ -1,0 +1,310 @@
+{{ define "content" }}
+<div id="loading-indicator" class="htmx-indicator fixed top-0 left-0 right-0 h-1 bg-blue-500 z-[200]" style="display:none;"></div>
+
+<div class="flex justify-between items-center mb-6">
+    <h1 class="text-2xl font-semibold text-gray-700">Manajemen User</h1>
+    <button id="add-user-button"
+        class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg shadow-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-75 flex items-center">
+        <i class="fas fa-plus mr-2"></i> Tambah User
+    </button>
+</div>
+
+<!-- Form Filter -->
+<div class="bg-white rounded-xl shadow-sm p-4 sm:p-6 mb-6">
+    <form id="user-filter-form" class="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+        <div>
+            <label for="search" class="block text-sm font-medium text-gray-700">Cari User</label>
+            <input type="text" name="search" id="search" value="{{ .Data.SearchTerm }}"
+                   class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                   placeholder="Username, Nama, atau Email...">
+        </div>
+        <div>
+            <label for="role" class="block text-sm font-medium text-gray-700">Filter Peran</label>
+            <select name="role" id="role-filter"
+                    class="mt-1 block w-full px-3 py-2 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                <option value="">Semua Peran</option>
+                {{ range .Data.AllRoles }}
+                    <option value="{{ .String }}" {{ if eq .String $.Data.RoleFilter }}selected{{ end }}>{{ .String }}</option>
+                {{ end }}
+            </select>
+        </div>
+        <div class="md:col-span-1 flex justify-start md:justify-end">
+            <button type="button" id="apply-filter-button"
+                    class="w-full md:w-auto bg-gray-600 hover:bg-gray-700 text-white font-semibold py-2 px-4 rounded-lg shadow-md focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-opacity-75 flex items-center justify-center">
+                <i class="fas fa-filter mr-2"></i> Terapkan Filter
+            </button>
+        </div>
+    </form>
+</div>
+
+<!-- User List Container -->
+<div id="user-list-container" class="bg-white rounded-xl shadow-sm overflow-x-auto">
+    {{ template "user_list_content" . }}
+</div>
+
+
+<!-- Modal untuk Tambah/Edit User -->
+<div id="user-modal" class="fixed z-[100] inset-0 overflow-y-auto hidden" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+    <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+        <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" aria-hidden="true" onclick="document.getElementById('user-modal').classList.add('hidden'); document.getElementById('modal-content').innerHTML = '';"></div>
+        <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+        <div id="modal-content-wrapper" class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
+             <div id="modal-content">
+                <div class="p-4 text-center">
+                    <i class="fas fa-spinner fa-spin text-2xl text-blue-600"></i>
+                    <p class="mt-2 text-sm text-gray-500">Memuat form...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{{ end }}
+
+{{ define "user_list_content" }}
+    {{ if .Data.Users }}
+        {{ $pagination := .Data.PaginationData }}
+        {{ $searchTerm := .Data.SearchTerm }}
+        {{ $roleFilter := .Data.RoleFilter }}
+        {{ $limit := .Data.Limit }}
+
+
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Username</th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nama</th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Peran</th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tim</th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Dibuat Pada</th>
+                        <th scope="col" class="relative px-6 py-3">
+                            <span class="sr-only">Aksi</span>
+                        </th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200" id="user-table-body">
+                    {{ range .Data.Users }}
+                    <tr data-user-id="{{ .ID }}">
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{{ .ID }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ .Username }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ .Name }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ .Email }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full {{ if eq .Role.String "superadmin" }}bg-red-100 text-red-800{{ else if eq .Role.String "admin" }}bg-yellow-100 text-yellow-800{{ else if eq .Role.String "administrator" }}bg-yellow-100 text-yellow-800{{ else if eq .Role.String "telemarketing" }}bg-green-100 text-green-800{{ else if eq .Role.String "crm" }}bg-blue-100 text-blue-800{{ else }}bg-gray-100 text-gray-800{{ end }}">
+                                {{ .Role.String }}
+                            </span>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ if .TeamName.Valid }}{{ .TeamName.String }}{{ else }}-{{ end }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ .CreatedAt.Format "02 Jan 2006 15:04" }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                            <button type="button" class="text-indigo-600 hover:text-indigo-900 mr-2 edit-user-btn" 
+                                    data-user-id="{{ .ID }}">Edit</button>
+                            <button type="button" class="text-red-600 hover:text-red-900 delete-user-btn"
+                                    data-user-id="{{ .ID }}" data-username="{{ .Username }}">Hapus</button>
+                        </td>
+                    </tr>
+                    {{ else }}
+                    <tr>
+                        <td colspan="8" class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">Tidak ada data pengguna.</td>
+                    </tr>
+                    {{ end }}
+                </tbody>
+            </table>
+        </div>
+
+        <div id="user-pagination-container" class="py-3 flex items-center justify-between border-t border-gray-200 {{ if not (gt $pagination.TotalPages 0) }}hidden{{ end }}">
+            <div class="flex-1 flex justify-between sm:hidden">
+                <button type="button" class="pagination-link relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 {{ if not $pagination.HasPreviousPage }}hidden{{ end }}"
+                        data-page="{{ $pagination.PreviousPage }}">
+                    Sebelumnya
+                </button>
+                <button type="button" class="pagination-link ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 {{ if not $pagination.HasNextPage }}hidden{{ end }}"
+                        data-page="{{ $pagination.NextPage }}">
+                    Berikutnya
+                </button>
+            </div>
+            <div class="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+                <div>
+                    <p class="text-sm text-gray-700" id="pagination-info">
+                        {{ $startRecord := 0 }}
+                        {{ if gt .Data.TotalRecords 0 }}{{ $startRecord = add (mul (sub $pagination.CurrentPage 1) $limit) 1 }}{{ end }}
+                        {{ $endRecord := 0 }}
+                        {{ if gt .Data.TotalRecords 0 }}{{ $endRecord = min (mul $pagination.CurrentPage $limit) .Data.TotalRecords }}{{ end }}
+                        Menampilkan
+                        <span class="font-medium">{{ $startRecord }}</span>
+                        sampai
+                        <span class="font-medium">{{ $endRecord }}</span>
+                        dari
+                        <span class="font-medium">{{ .Data.TotalRecords }}</span>
+                        hasil
+                    </p>
+                </div>
+                <div id="pagination-links">
+                    <nav class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+                        <button type="button" class="pagination-link relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 {{ if not $pagination.HasPreviousPage }}hidden{{ end }}"
+                                data-page="{{ $pagination.PreviousPage }}">
+                            <span class="sr-only">Sebelumnya</span>
+                            <i class="fas fa-chevron-left h-5 w-5"></i>
+                        </button>
+
+                        {{ if $pagination.ShowPrevEllipsis }}
+                        <span class="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700">
+                            ...
+                        </span>
+                        {{ end }}
+
+                        {{ range $pagination.Pages }}
+                        <button type="button" class="pagination-link {{ if eq . $pagination.CurrentPage }}z-10 bg-indigo-50 border-indigo-500 text-indigo-600{{ else }}bg-white border-gray-300 text-gray-500 hover:bg-gray-50{{ end }} relative inline-flex items-center px-4 py-2 border text-sm font-medium"
+                                data-page="{{ . }}" aria-current="{{ if eq . $pagination.CurrentPage }}page{{ else }}false{{ end }}">
+                            {{ . }}
+                        </button>
+                        {{ end }}
+
+                        {{ if $pagination.ShowNextEllipsis }}
+                        <span class="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700">
+                            ...
+                        </span>
+                        {{ end }}
+
+                        <button type="button" class="pagination-link relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 {{ if not $pagination.HasNextPage }}hidden{{ end }}"
+                                data-page="{{ $pagination.NextPage }}">
+                            <span class="sr-only">Berikutnya</span>
+                            <i class="fas fa-chevron-right h-5 w-5"></i>
+                        </button>
+                    </nav>
+                </div>
+            </div>
+        </div>
+        {{ if not .Data.Users }}
+             <div class="p-4 text-center" id="no-users-message" {{ if .Data.Users }}style="display:none;"{{ end }}>
+                <i class="fas fa-info-circle text-2xl text-gray-400"></i>
+                <p class="mt-2 text-sm text-gray-500">Tidak ada data pengguna yang cocok dengan kriteria.</p>
+            </div>
+        {{ end }}
+    {{ else }}
+        <div class="p-4 text-center" id="users-loading-placeholder">
+            <i class="fas fa-spinner fa-spin text-2xl text-blue-600"></i>
+            <p class="mt-2 text-sm text-gray-500">Memuat data pengguna...</p>
+        </div>
+    {{ end }}
+{{ end }}
+
+{{ define "user_form_content" }}
+<form id="user-action-form">
+    <input type="hidden" id="form-user-id" value="{{ if .Data.Data.IsEditMode }}{{ .Data.Data.UserID }}{{ end }}">
+    <input type="hidden" id="form-is-edit-mode" value="{{ if .Data.Data.IsEditMode }}true{{ else }}false{{ end }}">
+
+    <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+        <div class="sm:flex sm:items-start">
+            <div class="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full {{ if .Data.Data.IsEditMode }}bg-yellow-100{{ else }}bg-blue-100{{ end }} sm:mx-0 sm:h-10 sm:w-10">
+                {{ if .Data.Data.IsEditMode }}
+                    <i class="fas fa-user-edit text-yellow-600"></i>
+                {{ else }}
+                    <i class="fas fa-user-plus text-blue-600"></i>
+                {{ end }}
+            </div>
+            <div class="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left w-full">
+                <h3 class="text-lg leading-6 font-medium text-gray-900" id="modal-title">
+                    {{ if .Data.Data.IsEditMode }}Edit User{{ else }}Tambah User Baru{{ end }}
+                </h3>
+                <div class="mt-4 space-y-4">
+                    <div id="user-form-general-error" class="rounded-md bg-red-50 p-4" style="display:none;">
+                        <div class="flex">
+                            <div class="flex-shrink-0">
+                                <i class="fas fa-times-circle text-red-400"></i>
+                            </div>
+                            <div class="ml-3">
+                                <h3 class="text-sm font-medium text-red-800">Error:</h3>
+                                <div class="mt-2 text-sm text-red-700">
+                                    <p id="user-form-general-error-text"></p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {{ if .Data.Data.FormError }}
+                         <div class="rounded-md bg-red-50 p-4">
+                            <div class="flex">
+                                <div class="flex-shrink-0"><i class="fas fa-times-circle text-red-400"></i></div>
+                                <div class="ml-3">
+                                    <h3 class="text-sm font-medium text-red-800">Error:</h3>
+                                    <div class="mt-2 text-sm text-red-700"><p>{{ .Data.Data.FormError }}</p></div>
+                                </div>
+                            </div>
+                        </div>
+                    {{ end }}
+
+                    <div>
+                        <label for="username" class="block text-sm font-medium text-gray-700">Username <span class="text-red-500">*</span></label>
+                        <input type="text" name="username" id="username" value="{{ .Data.Data.FormData.Username }}" required {{ if .Data.Data.IsEditMode }}readonly class="bg-gray-100 cursor-not-allowed" {{ end }} 
+                               class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                        {{ if .Data.Data.IsEditMode }}<p class="mt-1 text-xs text-gray-500">Username tidak dapat diubah.</p>{{ end }}
+                        <p class="mt-1 text-xs text-red-500 field-error-text" id="username-error-text" style="display:none;"></p>
+                        {{ if .Data.Data.ValidationErrors.username }}<p class="mt-1 text-xs text-red-500">{{ .Data.Data.ValidationErrors.username }}</p>{{ end }}
+                    </div>
+                    <div>
+                        <label for="name" class="block text-sm font-medium text-gray-700">Nama Lengkap <span class="text-red-500">*</span></label>
+                        <input type="text" name="name" id="name" value="{{ .Data.Data.FormData.Name }}" required
+                               class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                        <p class="mt-1 text-xs text-red-500 field-error-text" id="name-error-text" style="display:none;"></p>
+                        {{ if .Data.Data.ValidationErrors.name }}<p class="mt-1 text-xs text-red-500">{{ .Data.Data.ValidationErrors.name }}</p>{{ end }}
+                    </div>
+                     <div>
+                        <label for="email" class="block text-sm font-medium text-gray-700">Email <span class="text-red-500">*</span></label>
+                        <input type="email" name="email" id="email" value="{{ .Data.Data.FormData.Email }}" required
+                               class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                        <p class="mt-1 text-xs text-red-500 field-error-text" id="email-error-text" style="display:none;"></p>
+                        {{ if .Data.Data.ValidationErrors.email }}<p class="mt-1 text-xs text-red-500">{{ .Data.Data.ValidationErrors.email }}</p>{{ end }}
+                    </div>
+                    <div>
+                        <label for="role" class="block text-sm font-medium text-gray-700">Peran <span class="text-red-500">*</span></label>
+                        <select name="role" id="role" required
+                                class="mt-1 block w-full px-3 py-2 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                            <option value="">Pilih Peran</option>
+                            {{ range .Data.Data.AllRoles }}
+                                <option value="{{ . }}" {{ if eq .String $.Data.Data.FormData.Role }}selected{{ end }}>{{ . }}</option>
+                            {{ end }}
+                        </select>
+                        <p class="mt-1 text-xs text-red-500 field-error-text" id="role-error-text" style="display:none;"></p>
+                         {{ if .Data.Data.ValidationErrors.role }}<p class="mt-1 text-xs text-red-500">{{ .Data.Data.ValidationErrors.role }}</p>{{ end }}
+                    </div>
+                    <div>
+                        <label for="password" class="block text-sm font-medium text-gray-700">Password {{ if not .Data.Data.IsEditMode }}<span class="text-red-500">*</span>{{ end }}</label>
+                        <input type="password" name="password" id="password" {{ if not .Data.Data.IsEditMode }}required{{ end }}
+                               class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm" 
+                               placeholder="{{ if .Data.Data.IsEditMode }}Kosongkan jika tidak ingin mengubah{{ end }}">
+                        <p class="mt-1 text-xs text-red-500 field-error-text" id="password-error-text" style="display:none;"></p>
+                        {{ if .Data.Data.ValidationErrors.password }}<p class="mt-1 text-xs text-red-500">{{ .Data.Data.ValidationErrors.password }}</p>{{ end }}
+                    </div>
+                    <div>
+                        <label for="confirm_password" class="block text-sm font-medium text-gray-700">Konfirmasi Password {{ if not .Data.Data.IsEditMode }}<span class="text-red-500">*</span>{{ end }}</label>
+                        <input type="password" name="confirm_password" id="confirm_password" {{ if not .Data.Data.IsEditMode }}required{{ end }}
+                               class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm" 
+                               placeholder="{{ if .Data.Data.IsEditMode }}Kosongkan jika tidak ingin mengubah{{ end }}">
+                        <p class="mt-1 text-xs text-red-500 field-error-text" id="confirm_password-error-text" style="display:none;"></p>
+                        {{ if .Data.Data.ValidationErrors.confirm_password }}<p class="mt-1 text-xs text-red-500">{{ .Data.Data.ValidationErrors.confirm_password }}</p>{{ end }}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+        <button type="button" id="save-user-button"
+                class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 text-base font-medium text-white focus:outline-none focus:ring-2 focus:ring-offset-2 sm:ml-3 sm:w-auto sm:text-sm 
+                       {{ if .Data.Data.IsEditMode }}bg-yellow-600 hover:bg-yellow-700 focus:ring-yellow-500{{ else }}bg-blue-600 hover:bg-blue-700 focus:ring-blue-500{{ end }}">
+            {{ if .Data.Data.IsEditMode }}Simpan Perubahan{{ else }}Simpan User{{ end }}
+        </button>
+        <button type="button" id="cancel-user-form-button"
+                onclick="document.getElementById('user-modal').classList.add('hidden'); document.getElementById('modal-content').innerHTML = '';"
+                class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm">
+            Batal
+        </button>
+    </div>
+</form> 
+{{ end }}
+
+{{ define "scripts" }}
+<script src="/static/js/user.js"></script> 
+{{ end }} 

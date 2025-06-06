@@ -1,0 +1,300 @@
+{{ define "title" }}Manajemen Brand{{ end }}
+
+{{ define "extra_css" }}
+<style>
+    .modal {
+        display: none; /* Hidden by default */
+        position: fixed; /* Stay in place */
+        z-index: 1000; /* Sit on top - lebih tinggi dari elemen lain */
+        left: 0;
+        top: 0;
+        width: 100%; /* Full width */
+        height: 100%; /* Full height */
+        overflow: auto; /* Enable scroll if needed */
+        background-color: rgba(0,0,0,0.6); /* Black w/ opacity */
+    }
+    .modal-content {
+        background-color: #fefefe;
+        margin: 10% auto; /* Adjusted margin for better centering */
+        padding: 24px;
+        border: 1px solid #888;
+        width: 90%; /* Responsive width */
+        max-width: 500px;
+        border-radius: 8px;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+    .close-button {
+        color: #aaa;
+        float: right;
+        font-size: 28px;
+        font-weight: bold;
+        line-height: 1;
+    }
+    .close-button:hover,
+    .close-button:focus {
+        color: black;
+        text-decoration: none;
+        cursor: pointer;
+    }
+</style>
+{{ end }}
+
+{{ define "content" }}
+<div class="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6">
+        <h1 class="text-2xl font-semibold text-gray-800 mb-4 sm:mb-0">Manajemen Brand</h1>
+        <button id="addBrandButton" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline flex items-center">
+            <i class="fas fa-plus mr-2"></i>Tambah Brand
+        </button>
+    </div>
+
+    <!-- Pesan Notifikasi -->
+    {{ with .Data.SuccessMsg }}
+        <div class="bg-green-100 border-l-4 border-green-500 text-green-700 p-4 mb-4" role="alert">
+            <p class="font-bold">Sukses</p>
+            <p>{{ . }}</p>
+        </div>
+    {{ end }}
+    {{ with .Data.ErrorMsg }}
+        <div class="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-4" role="alert">
+            <p class="font-bold">Error</p>
+            <p>{{ . }}</p>
+        </div>
+    {{ end }}
+
+    <!-- Form Pencarian -->
+    <form method="GET" action="/brand" class="mb-6">
+        <div class="flex items-center">
+            <input type="text" name="search" placeholder="Cari nama brand..." value="{{ .Data.SearchTerm }}" 
+                   class="shadow-sm appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent mr-2">
+            <button type="submit" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">
+                <i class="fas fa-search"></i>
+            </button>
+            {{if .Data.SearchTerm}}
+            <a href="/brand" class="ml-3 text-sm text-blue-600 hover:text-blue-800">Reset</a>
+            {{end}}
+        </div>
+    </form>
+
+    <!-- Tabel Brand -->
+    <div class="bg-white shadow-md rounded-lg overflow-x-auto">
+        <table class="min-w-full leading-normal">
+            <thead>
+                <tr>
+                    <th class="px-5 py-3 border-b-2 border-gray-200 bg-gray-50 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                        Nama Brand
+                    </th>
+                    <th class="px-5 py-3 border-b-2 border-gray-200 bg-gray-50 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                        Jumlah Member
+                    </th>
+                    <th class="px-5 py-3 border-b-2 border-gray-200 bg-gray-50 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                        Dibuat Pada
+                    </th>
+                    <th class="px-5 py-3 border-b-2 border-gray-200 bg-gray-50 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                        Aksi
+                    </th>
+                </tr>
+            </thead>
+            <tbody>
+                {{ if .Data.Brands }}
+                    {{ range .Data.Brands }}
+                    <tr>
+                        <td class="px-5 py-4 border-b border-gray-200 bg-white text-sm">
+                            <p class="text-gray-900 whitespace-no-wrap">{{ .Name }}</p>
+                        </td>
+                        <td class="px-5 py-4 border-b border-gray-200 bg-white text-sm">
+                            <p class="text-gray-900 whitespace-no-wrap">{{ .MemberCount }}</p>
+                        </td>
+                        <td class="px-5 py-4 border-b border-gray-200 bg-white text-sm">
+                            <p class="text-gray-900 whitespace-no-wrap">{{ .CreatedAt.Format "02 Jan 2006 15:04" }}</p>
+                        </td>
+                        <td class="px-5 py-4 border-b border-gray-200 bg-white text-sm text-center whitespace-no-wrap">
+                            <button data-action="edit-brand" data-id="{{ .ID }}" data-name="{{ js .Name }}" class="text-indigo-600 hover:text-indigo-900 mr-3" title="Edit">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <a href="/member?brand_name={{ .Name | urlquery }}" class="text-green-600 hover:text-green-900 mr-3" title="Lihat Member">
+                                <i class="fas fa-eye"></i>
+                            </a>
+                            <button data-action="delete-brand" data-id="{{ .ID }}" data-name="{{ js .Name }}" class="text-red-600 hover:text-red-900" title="Hapus">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </td>
+                    </tr>
+                    {{ end }}
+                {{ else }}
+                    <tr>
+                        <td colspan="4" class="px-5 py-5 border-b border-gray-200 bg-white text-sm text-center text-gray-500">
+                            Tidak ada data brand ditemukan.
+                            {{ if .Data.SearchTerm }} Mungkin coba kata kunci lain?{{ end }}
+                        </td>
+                    </tr>
+                {{ end }}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Modal Tambah Brand -->
+<div id="addBrandModal" class="modal">
+    <div class="modal-content">
+        <span class="close-button" data-modal-close="addBrandModal">&times;</span>
+        <h2 class="text-xl font-semibold mb-4">Tambah Brand Baru</h2>
+        <form action="/brand/add" method="POST">
+            <div class="mb-4">
+                <label for="addName" class="block text-gray-700 text-sm font-bold mb-2">Nama Brand:</label>
+                <input type="text" id="addName" name="name" required
+                       class="shadow-sm appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+            </div>
+            <div class="flex items-center justify-end mt-6">
+                <button type="button" data-modal-close="addBrandModal" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline mr-2">
+                    Batal
+                </button>
+                <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">
+                    Simpan
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Modal Edit Brand -->
+<div id="editBrandModal" class="modal">
+    <div class="modal-content">
+        <span class="close-button" data-modal-close="editBrandModal">&times;</span>
+        <h2 class="text-xl font-semibold mb-4">Edit Brand</h2>
+        <form id="editBrandForm" method="POST">
+            <input type="hidden" id="editBrandId" name="id">
+            <div class="mb-4">
+                <label for="editName" class="block text-gray-700 text-sm font-bold mb-2">Nama Brand:</label>
+                <input type="text" id="editName" name="name" required
+                       class="shadow-sm appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+            </div>
+            <div class="flex items-center justify-end mt-6">
+                <button type="button" data-modal-close="editBrandModal" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline mr-2">
+                    Batal
+                </button>
+                <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">
+                    Update
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Modal Konfirmasi Hapus Brand -->
+<div id="deleteBrandModal" class="modal">
+    <div class="modal-content">
+        <span class="close-button" data-modal-close="deleteBrandModal">&times;</span>
+        <h2 class="text-xl font-semibold mb-4">Konfirmasi Hapus</h2>
+        <p class="mb-6 text-gray-700">Anda yakin ingin menghapus brand "<span id="deleteBrandName" class="font-semibold"></span>"?</p>
+        <form id="deleteBrandForm" method="POST">
+            <div class="flex items-center justify-end">
+                <button type="button" data-modal-close="deleteBrandModal" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline mr-2">
+                    Batal
+                </button>
+                <button type="submit" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">
+                    Hapus
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+{{ end }}
+
+{{ define "scripts" }}
+<script>
+    // alert('Blok scripts (sebelumnya extra_js) di brand.html sedang dieksekusi!'); // Bisa dikomentari/dihapus
+    // console.log('Log dari awal blok scripts di brand.html'); // Bisa dikomentari/dihapus
+
+    document.addEventListener('DOMContentLoaded', function() {
+        // console.log('DOMContentLoaded event fired di brand.html'); // Bisa dikomentari/dihapus
+        const addModal = document.getElementById('addBrandModal');
+        const editModal = document.getElementById('editBrandModal');
+        const deleteModal = document.getElementById('deleteBrandModal');
+
+        const editBrandForm = document.getElementById('editBrandForm');
+        const editBrandIdInput = document.getElementById('editBrandId');
+        const editNameInput = document.getElementById('editName');
+        
+        const deleteBrandForm = document.getElementById('deleteBrandForm');
+        const deleteBrandNameSpan = document.getElementById('deleteBrandName');
+
+        function openModal(modalElement) {
+            if (modalElement) modalElement.style.display = 'block';
+        }
+
+        function closeModal(modalElement) {
+            if (modalElement) modalElement.style.display = 'none';
+        }
+
+        // Tombol Tambah Brand
+        const addBrandButton = document.getElementById('addBrandButton');
+        if (addBrandButton) {
+            // console.log('Tombol #addBrandButton DITEMUKAN.'); // Bisa dikomentari/dihapus
+            addBrandButton.addEventListener('click', function(event) {
+                event.preventDefault(); 
+                // alert('Tombol Tambah Brand diklik!'); // Tes sudah berhasil, kembalikan logika modal
+                // console.log('Tombol Tambah Brand diklik dan event listener bekerja.');
+                const addModal = document.getElementById('addBrandModal'); // Pastikan ini adalah addModal yang benar
+                console.log('addModal element saat tombol diklik:', addModal); // Verifikasi elemen modal
+                openModal(addModal); // Kembalikan pemanggilan openModal
+            });
+        } else {
+            console.error('Tombol #addBrandButton TIDAK ditemukan saat DOMContentLoaded.');
+        }
+
+        // Event delegation untuk tombol aksi di dalam tabel (jika tabel dinamis, ini lebih baik)
+        document.querySelectorAll('[data-action="edit-brand"]').forEach(button => {
+            button.addEventListener('click', function() {
+                const id = this.dataset.id;
+                const name = this.dataset.name;
+                if(editBrandIdInput) editBrandIdInput.value = id;
+                if(editNameInput) editNameInput.value = name;
+                if(editBrandForm) editBrandForm.action = `/brand/edit/${id}`;
+                openModal(editModal);
+            });
+        });
+
+        document.querySelectorAll('[data-action="delete-brand"]').forEach(button => {
+            button.addEventListener('click', function() {
+                const id = this.dataset.id;
+                const name = this.dataset.name;
+                if(deleteBrandNameSpan) deleteBrandNameSpan.textContent = name;
+                if(deleteBrandForm) deleteBrandForm.action = `/brand/delete/${id}`;
+                openModal(deleteModal);
+            });
+        });
+
+        // Tombol Close di semua modal
+        document.querySelectorAll('[data-modal-close]').forEach(button => {
+            button.addEventListener('click', function() {
+                const modalToClose = document.getElementById(this.dataset.modalClose);
+                closeModal(modalToClose);
+                if (this.dataset.modalClose === 'addBrandModal') {
+                     const addNameInput = document.getElementById('addName');
+                     if(addNameInput) addNameInput.value = '';
+                }
+            });
+        });
+
+        // Close modals when clicking outside
+        window.addEventListener('click', function(event) {
+            if (event.target === addModal) closeModal(addModal);
+            if (event.target === editModal) closeModal(editModal);
+            if (event.target === deleteModal) closeModal(deleteModal);
+        });
+        
+        // Handle URL params for pre-opening edit modal (jika masih diperlukan)
+        const urlParams = new URLSearchParams(window.location.search);
+        const editIdFromUrl = urlParams.get('edit_id');
+        const editNameFromUrl = urlParams.get('edit_name');
+        if (editIdFromUrl && editNameFromUrl) {
+             if(editBrandIdInput) editBrandIdInput.value = editIdFromUrl;
+             if(editNameInput) editNameInput.value = decodeURIComponent(editNameFromUrl);
+             if(editBrandForm) editBrandForm.action = `/brand/edit/${editIdFromUrl}`;
+             openModal(editModal);
+        }
+    });
+</script>
+{{ end }}

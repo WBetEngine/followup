@@ -1,0 +1,277 @@
+{{ define "content" }}
+<div id="loading-indicator" class="htmx-indicator fixed top-0 left-0 right-0 h-1 bg-blue-500 z-[200]" style="display:none;"></div>
+
+<div class="flex justify-between items-center mb-6">
+    <h1 class="text-2xl font-semibold text-gray-700">Manajemen Followup</h1>
+</div>
+
+{{/* Pesan Error Halaman (jika ada dari handler) */}}
+{{ if .Data.PageError }}
+<div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4" role="alert">
+    <strong class="font-bold">Error!</strong>
+    <span class="block sm:inline">{{ .Data.PageError }}</span>
+</div>
+{{ end }}
+
+<!-- Form Filter -->
+<div class="bg-white rounded-xl shadow-sm p-4 sm:p-6 mb-6">
+    <form id="followup-filter-form" class="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+        <div>
+            <label for="search" class="block text-sm font-medium text-gray-700">Cari Member</label>
+            <input type="text" name="search" id="search" value="{{ .Data.Filters.SearchTerm }}"
+                   class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                   placeholder="Username, Email, No HP...">
+        </div>
+        <div>
+            <label for="status-filter" class="block text-sm font-medium text-gray-700">Filter Status</label>
+            <select name="status" id="status-filter"
+                    class="mt-1 block w-full px-3 py-2 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                <option value="">Semua Status</option>
+                {{/* Menggunakan flag boolean dari .Data untuk menentukan status terpilih */}}
+                <option value="New Deposit" {{ if .Data.IsNewDepositFiltered }}selected{{ end }}>New Deposit</option>
+                <option value="Redeposit" {{ if .Data.IsRedepositFiltered }}selected{{ end }}>Redeposit</option>
+                <option value="Pending" {{ if .Data.IsPendingFiltered }}selected{{ end }}>Pending</option> {{/* Asumsi value "Pending" dan ada flagnya */}}
+                {{/* Tambahkan status lain jika ada dan jika ada flag boolean yang sesuai di .Data */}}
+            </select>
+        </div>
+        <div>
+            <label for="brand-filter" class="block text-sm font-medium text-gray-700">Filter Brand</label>
+            <select name="brand_id" id="brand-filter"
+                    class="mt-1 block w-full px-3 py-2 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                <option value="">Semua Brand</option>
+                {{/* Loop untuk brand dari .Data.AllBrands */}}
+                {{/* {{ range .Data.AllBrands }} */}}
+                {{/* <option value="{{ .ID }}" {{ if eq .ID $.Data.Filters.BrandID }}selected{{ end }}>{{ .Name }}</option> */}}
+                {{/* {{ end }} */}}
+            </select>
+        </div>
+        <div class="md:col-span-1 flex justify-start md:justify-end">
+            <button type="button"
+                    class="w-full md:w-auto bg-gray-600 hover:bg-gray-700 text-white font-semibold py-2 px-4 rounded-lg shadow-md focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-opacity-75 flex items-center justify-center">
+                <i class="fas fa-filter mr-2"></i> Terapkan Filter
+            </button>
+        </div>
+    </form>
+</div>
+
+<!-- Followup List Container -->
+<div id="followup-list-container" class="bg-white rounded-xl shadow-sm overflow-x-auto">
+    {{ template "followup_list_content" . }}
+</div>
+
+{{ end }} {{/* End of define content */}}
+
+{{ define "followup_list_content" }}
+    {{ $data := .Data }}
+    {{/* Kondisi untuk mengecek apakah ada Followups atau PageError untuk menghindari render tabel kosong jika ada error halaman */}}
+    {{ if and $data.Followups (not $data.PageError) }}
+        {{ $pagination := $data.PaginationData }}
+        {{ $filters := $data.Filters }}
+        {{ $limit := $data.Limit }}
+
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">No</th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Username</th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">No. Telepon</th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Bank</th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">No. Rekening</th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Brand</th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">CRM</th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tgl. Member</th>
+                        <th scope="col" class="relative px-6 py-3"><span class="sr-only">Aksi</span></th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200" id="followup-table-body">
+                    {{ range $index, $item := $data.Followups }}
+                    <tr data-member-id="{{ $item.ID }}">
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ add (mul (sub $pagination.CurrentPage 1) $limit) (add $index 1) }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                            {{ $item.Username }}
+                            {{ if $item.DepositPending }}
+                                <span class="ml-2 px-2 py-0.5 inline-flex text-xs leading-4 font-semibold rounded-full bg-orange-400 text-white">pending</span>
+                            {{ end }}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ if $item.Email.Valid }}{{ $item.Email.String }}{{ else }}-{{ end }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {{ if $item.PhoneNumber.Valid }}{{ $item.PhoneNumber.String }}{{ else }}-{{ end }}
+                            {{/* TODO: Tombol Copy No HP */}}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ if $item.BankName.Valid }}{{ $item.BankName.String }}{{ else }}-{{ end }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {{ if $item.AccountNo.Valid }}{{ $item.AccountNo.String }}{{ else }}-{{ end }}
+                            {{/* TODO: Tombol Copy No Rekening */}}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ if $item.BrandName.Valid }}{{ $item.BrandName.String }}{{ else }}-{{ end }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ $item.Status }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ if $item.CRMUsername.Valid }}{{ $item.CRMUsername.String }}{{ else }}-{{ end }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ $item.MemberCreatedAt.Format "02 Jan 2006" }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                            <button type="button" class="text-green-600 hover:text-green-900 deposit-member-btn" data-member-id="{{ $item.ID }}" data-member-username="{{ $item.Username }}">Deposit</button>
+                        </td>
+                    </tr>
+                    {{ else }}
+                    <tr>
+                        <td colspan="11" class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">Tidak ada data followup yang ditemukan.</td>
+                    </tr>
+                    {{ end }}
+                </tbody>
+            </table>
+        </div>
+
+        {{ $currentPage := $pagination.CurrentPage }}
+        {{ $totalPages := $pagination.TotalPages }}
+        <div id="followup-pagination-container" class="py-3 flex items-center justify-between border-t border-gray-200 {{ if not (gt $totalPages 0) }}hidden{{ end }}">
+            <div class="flex-1 flex justify-between sm:hidden">
+                <button type="button" class="pagination-link relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 {{ if not $pagination.HasPreviousPage }}hidden{{ end }}"
+                        data-page="{{ $pagination.PreviousPage }}">
+                    Sebelumnya
+                </button>
+                <button type="button" class="pagination-link ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 {{ if not $pagination.HasNextPage }}hidden{{ end }}"
+                        data-page="{{ $pagination.NextPage }}">
+                    Berikutnya
+                </button>
+            </div>
+            <div class="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+                <div>
+                    <p class="text-sm text-gray-700" id="pagination-info">
+                        {{ $startRecord := 0 }}
+                        {{ if gt $data.TotalRecords 0 }}{{ $startRecord = add (mul (sub $currentPage 1) $limit) 1 }}{{ end }}
+                        {{ $endRecord := 0 }}
+                        {{ if gt $data.TotalRecords 0 }}{{ $endRecord = min (mul $currentPage $limit) $data.TotalRecords }}{{ end }}
+                        Menampilkan
+                        <span class="font-medium">{{ $startRecord }}</span>
+                        sampai
+                        <span class="font-medium">{{ $endRecord }}</span>
+                        dari
+                        <span class="font-medium">{{ $data.TotalRecords }}</span>
+                        hasil
+                    </p>
+                </div>
+                <div id="pagination-links">
+                    <nav class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+                        <button type="button" class="pagination-link relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 {{ if not $pagination.HasPreviousPage }}hidden{{ end }}"
+                                data-page="{{ $pagination.PreviousPage }}">
+                            <span class="sr-only">Sebelumnya</span>
+                            <i class="fas fa-chevron-left h-5 w-5"></i>
+                        </button>
+                        {{ if $pagination.ShowPrevEllipsis }}
+                        <span class="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700">...</span>
+                        {{ end }}
+                        {{ range $pagination.Pages }}
+                        <button type="button" class="pagination-link {{ if eq . $currentPage }}z-10 bg-indigo-50 border-indigo-500 text-indigo-600{{ else }}bg-white border-gray-300 text-gray-500 hover:bg-gray-50{{ end }} relative inline-flex items-center px-4 py-2 border text-sm font-medium"
+                                data-page="{{ . }}" aria-current="{{ if eq . $currentPage }}page{{ else }}false{{ end }}">
+                            {{ . }}
+                        </button>
+                        {{ end }}
+                        {{ if $pagination.ShowNextEllipsis }}
+                        <span class="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700">...</span>
+                        {{ end }}
+                        <button type="button" class="pagination-link relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 {{ if not $pagination.HasNextPage }}hidden{{ end }}"
+                                data-page="{{ $pagination.NextPage }}">
+                            <span class="sr-only">Berikutnya</span>
+                            <i class="fas fa-chevron-right h-5 w-5"></i>
+                        </button>
+                    </nav>
+                </div>
+            </div>
+        </div>
+    {{ else if $data.PageError }}
+        {{/* Error sudah ditampilkan di atas blok filter, pesan ini mungkin redundan atau bisa untuk state lain */}}
+        <div class="p-4 text-center text-gray-500">
+            Tidak dapat menampilkan data karena terjadi kesalahan.
+        </div>
+    {{ else }}
+        {{/* Initial loading state or no data and no error state */}}
+        <div class="p-4 text-center" id="followup-initial-message">
+            <i class="fas fa-info-circle text-2xl text-gray-400"></i>
+            <p class="mt-2 text-sm text-gray-500">Tidak ada data followup untuk ditampilkan atau filter tidak menghasilkan data.</p>
+        </div>
+    {{ end }}
+{{ end }} {{/* End of define followup_list_content */}}
+
+{{ define "scripts" }}
+<script>
+    function getFollowupFiltersFromForm() {
+        const form = document.getElementById('followup-filter-form');
+        const formData = new FormData(form);
+        const params = new URLSearchParams();
+        formData.forEach((value, key) => {
+            if (value) params.set(key, value);
+        });
+        return params;
+    }
+
+    function loadFollowupListContent(pageNumber) {
+        const container = document.getElementById('followup-list-container');
+        const loadingIndicator = document.getElementById('loading-indicator');
+        if (!container || !loadingIndicator) return;
+
+        const params = getFollowupFiltersFromForm();
+        if (pageNumber) {
+            params.set('page', pageNumber);
+        }
+        params.set('fragment', 'true'); // Minta hanya fragment HTML
+
+        loadingIndicator.style.display = 'block';
+        container.innerHTML = `<div class="p-4 text-center"><i class="fas fa-spinner fa-spin text-2xl text-blue-600"></i><p class="mt-2 text-sm text-gray-500">Memuat...</p></div>`;
+
+        fetch(`/followup?${params.toString()}`)
+            .then(response => {
+                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                return response.text(); 
+            })
+            .then(html => {
+                container.innerHTML = html;
+                attachFollowupPaginationListeners(); 
+            })
+            .catch(error => {
+                console.error('Error loading followup list content:', error);
+                container.innerHTML = `<div class="p-4 text-center text-red-500">Gagal memuat data. ${error.message}</div>`;
+            })
+            .finally(() => {
+                loadingIndicator.style.display = 'none';
+            });
+    }
+
+    function attachFollowupPaginationListeners() {
+        document.querySelectorAll('#followup-pagination-container .pagination-link').forEach(button => {
+            button.addEventListener('click', function(event) {
+                event.preventDefault();
+                const page = this.dataset.page;
+                loadFollowupListContent(page);
+            });
+        });
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        attachFollowupPaginationListeners();
+
+        document.getElementById('apply-followup-filter-button')?.addEventListener('click', () => {
+            loadFollowupListContent('1'); // Selalu ke halaman 1 saat filter baru
+        });
+        
+        document.getElementById('search')?.addEventListener('keypress', function (e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                loadFollowupListContent('1');
+            }
+        });
+
+        // Listener untuk tombol deposit
+        document.getElementById('followup-table-body')?.addEventListener('click', function(event) {
+            if (event.target.classList.contains('deposit-member-btn')) {
+                const memberId = event.target.dataset.memberId;
+                const memberUsername = event.target.dataset.memberUsername;
+                // TODO: Implementasikan logika modal deposit
+                alert(`Tombol Deposit untuk member ID: ${memberId} (${memberUsername}) diklik. Implementasikan modal.`);
+            }
+            // TODO: Listener untuk tombol copy
+        });
+    });
+</script>
+{{ end }} {{/* End of define scripts */}}

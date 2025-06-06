@@ -1,0 +1,537 @@
+{{ define "title" }}Manajemen Member{{ end }}
+
+{{ define "breadcrumb" }}
+<nav aria-label="breadcrumb" class="text-sm font-medium mb-4">
+    <ol class="list-none p-0 inline-flex">
+        <li class="flex items-center">
+            <a href="/dashboard" class="text-gray-500 hover:text-gray-700"><i class="fas fa-home mr-1"></i>Dashboard</a>
+        </li>
+        <li class="flex items-center">
+            <span class="mx-2 text-gray-400">/</span>
+            <span class="text-gray-700">Manajemen Member</span>
+        </li>
+    </ol>
+</nav>
+{{ end }}
+
+{{ define "content" }}
+<div class="container mx-auto px-4 py-2">
+    <div class="flex justify-between items-center mb-6">
+        <h1 class="text-2xl sm:text-3xl font-bold text-gray-800">Manajemen Member</h1>
+        <button id="addMemberBtn" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg shadow-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 flex items-center">
+            <i class="fas fa-plus mr-2"></i>Tambah Member
+        </button>
+    </div>
+
+    <!-- Filter dan Pencarian -->
+    <form method="GET" action="/member" class="bg-white p-4 sm:p-6 rounded-xl shadow-sm mb-6">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+            <div>
+                <label for="search" class="block text-sm font-medium text-gray-700 mb-1">Cari Member</label>
+                <input type="text" name="search" id="search" value="{{ .Data.SearchTerm }}" placeholder="Username, email, dll..." class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+            </div>
+            <div>
+                <label for="brand_name" class="block text-sm font-medium text-gray-700 mb-1">Filter Brand</label>
+                <select name="brand_name" id="brand_name" class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                    <option value="">Semua Brand</option>
+                    {{ range .Data.BrandsForFilter }}
+                        <option value="{{ .Name }}" {{ if eq $.Data.FilterBrand .Name }}selected{{ end }}>{{ .Name }}</option>
+                    {{ end }}
+                </select>
+            </div>
+            <div>
+                <label for="status" class="block text-sm font-medium text-gray-700 mb-1">Filter Status</label>
+                <select name="status" id="status" class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                    <option value="">Semua Status</option>
+                    <option value="New Deposit" {{ if eq .Data.FilterStatus "New Deposit" }}selected{{ end }}>New Deposit</option>
+                    <option value="Redeposit" {{ if eq .Data.FilterStatus "Redeposit" }}selected{{ end }}>Redeposit</option>
+                    <!-- Tambahkan status lain jika ada -->
+                </select>
+            </div>
+        </div>
+        <div class="flex justify-end space-x-3">
+            <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 flex items-center">
+                <i class="fas fa-filter mr-2"></i>Terapkan
+            </button>
+            <a href="/member" class="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-300 focus:ring-offset-2 flex items-center">
+                <i class="fas fa-undo mr-2"></i>Reset Filter
+            </a>
+        </div>
+    </form>
+
+    <div class="mb-4 text-sm text-gray-600">
+        Menampilkan {{ len .Data.Members }} dari {{ .Data.TotalRecords }} total member.
+    </div>
+
+    <div class="overflow-x-auto bg-white rounded-xl shadow-sm">
+        <table class="min-w-full leading-normal">
+            <thead>
+                <tr>
+                    <th class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">No.</th>
+                    <th class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Username</th>
+                    <th class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Email</th>
+                    <th class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">No. Telepon</th>
+                    <th class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Bank</th>
+                    <th class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Account No</th>
+                    <th class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Brand</th>
+                    <th class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Status</th>
+                    <th class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">CRM</th>
+                    <th class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Aksi</th>
+                </tr>
+            </thead>
+            <tbody>
+                {{ if .Data.Members }}
+                    {{ range $index, $member := .Data.Members }}
+                    <tr>
+                        <td class="px-5 py-4 border-b border-gray-200 bg-white text-sm">{{ add (mul (sub $.Data.CurrentPage 1) $.Data.Limit) (add $index 1) }}</td>
+                        <td class="px-5 py-4 border-b border-gray-200 bg-white text-sm"><p class="text-gray-900 whitespace-no-wrap">{{ $member.Username }}</p></td>
+                        <td class="px-5 py-4 border-b border-gray-200 bg-white text-sm"><p class="text-gray-900 whitespace-no-wrap">{{ $member.Email }}</p></td>
+                        <td class="px-5 py-4 border-b border-gray-200 bg-white text-sm"><p class="text-gray-900 whitespace-no-wrap">{{ $member.PhoneNumber }}</p></td>
+                        <td class="px-5 py-4 border-b border-gray-200 bg-white text-sm"><p class="text-gray-900 whitespace-no-wrap">{{ $member.BankName }}</p></td>
+                        <td class="px-5 py-4 border-b border-gray-200 bg-white text-sm"><p class="text-gray-900 whitespace-no-wrap">{{ $member.AccountNo }}</p></td>
+                        <td class="px-5 py-4 border-b border-gray-200 bg-white text-sm"><p class="text-gray-900 whitespace-no-wrap">{{ $member.BrandName }}</p></td>
+                        <td class="px-5 py-4 border-b border-gray-200 bg-white text-sm">
+                            <span class="px-2 py-1 font-semibold leading-tight rounded-full 
+                                {{if eq $member.Status "New Deposit"}} bg-green-100 text-green-700 
+                                {{else if eq $member.Status "Redeposit"}} bg-blue-100 text-blue-700 
+                                {{else}} bg-gray-100 text-gray-700 {{end}}">
+                                {{ $member.Status }}
+                            </span>
+                        </td>
+                        <td class="px-5 py-4 border-b border-gray-200 bg-white text-sm">
+                            <p class="text-gray-900 whitespace-no-wrap">
+                                {{ if $member.CRMInfo }}
+                                    {{ $member.CRMInfo }}
+                                {{ else }}
+                                    <span class="text-gray-400 italic">N/A</span>
+                                {{ end }}
+                            </p>
+                        </td>
+                        <td class="px-5 py-4 border-b border-gray-200 bg-white text-sm">
+                            <button title="Edit Member" class="text-blue-600 hover:text-blue-900 mr-2 editMemberBtn" data-id="{{ $member.ID }}" data-phone="{{ $member.PhoneNumber }}">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button title="Hapus Member" class="text-red-600 hover:text-red-900 deleteMemberBtn" data-id="{{ $member.ID }}" data-username="{{ $member.Username }}">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                            <button title="Ubah CRM" class="text-purple-600 hover:text-purple-900 ml-1 changeCrmBtn" data-id="{{ $member.ID }}" data-crm="{{ $member.CRMInfo }}">
+                                <i class="fas fa-user-cog"></i>
+                            </button>
+                        </td>
+                    </tr>
+                    {{ end }}
+                {{ else }}
+                    <tr>
+                        <td colspan="10" class="text-center py-10 text-gray-500">
+                            <i class="fas fa-folder-open fa-3x mb-3"></i>
+                            <p>Tidak ada data member ditemukan.</p>
+                        </td>
+                    </tr>
+                {{ end }}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Pagination -->
+    {{ if gt .Data.TotalPages 1 }}
+    <div class="py-5">
+        <nav class="flex justify-center">
+            <ul class="inline-flex items-center -space-x-px">
+                <!-- Previous Button -->
+                {{ if gt .Data.CurrentPage 1 }}
+                <li>
+                    <a href="/member?page={{ sub .Data.CurrentPage 1 }}&limit={{ .Data.Limit }}&search={{ .Data.SearchTerm }}&brand_name={{ .Data.FilterBrand }}&status={{ .Data.FilterStatus }}&sort_by={{ .Data.SortBy }}&sort_order={{ .Data.SortOrder }}"
+                       class="py-2 px-3 ml-0 leading-tight text-gray-500 bg-white border border-gray-300 rounded-l-lg hover:bg-gray-100 hover:text-gray-700">
+                        <i class="fas fa-chevron-left mr-1"></i> Sebelumya
+                    </a>
+                </li>
+                {{ else }}
+                <li>
+                    <span class="py-2 px-3 ml-0 leading-tight text-gray-400 bg-white border border-gray-300 rounded-l-lg cursor-not-allowed">
+                        <i class="fas fa-chevron-left mr-1"></i> Sebelumya
+                    </span>
+                </li>
+                {{ end }}
+
+                {{ if .Data.ShowPrevEllipsis }}
+                <li>
+                    <a href="/member?page=1&limit={{ .Data.Limit }}&search={{ .Data.SearchTerm }}&brand_name={{ .Data.FilterBrand }}&status={{ .Data.FilterStatus }}&sort_by={{ .Data.SortBy }}&sort_order={{ .Data.SortOrder }}"
+                       class="py-2 px-3 leading-tight text-gray-500 bg-white border border-gray-300 hover:bg-gray-100 hover:text-gray-700">1</a>
+                </li>
+                <li>
+                    <span class="py-2 px-3 leading-tight text-gray-500 bg-white border border-gray-300">...</span>
+                </li>
+                {{ end }}
+
+                {{ range .Data.PaginationPages }}
+                <li>
+                    <a href="/member?page={{ . }}&limit={{ $.Data.Limit }}&search={{ $.Data.SearchTerm }}&brand_name={{ $.Data.FilterBrand }}&status={{ $.Data.FilterStatus }}&sort_by={{ $.Data.SortBy }}&sort_order={{ $.Data.SortOrder }}"
+                       class="py-2 px-3 leading-tight border border-gray-300 
+                              {{ if eq . $.Data.CurrentPage }} text-blue-600 bg-blue-50 hover:bg-blue-100 hover:text-blue-700 
+                              {{ else }} text-gray-500 bg-white hover:bg-gray-100 hover:text-gray-700 {{ end }}">
+                        {{ . }}
+                    </a>
+                </li>
+                {{ end }}
+
+                {{ if .Data.ShowNextEllipsis }}
+                <li>
+                    <span class="py-2 px-3 leading-tight text-gray-500 bg-white border border-gray-300">...</span>
+                </li>
+                <li>
+                    <a href="/member?page={{ .Data.TotalPages }}&limit={{ .Data.Limit }}&search={{ .Data.SearchTerm }}&brand_name={{ .Data.FilterBrand }}&status={{ .Data.FilterStatus }}&sort_by={{ .Data.SortBy }}&sort_order={{ .Data.SortOrder }}"
+                       class="py-2 px-3 leading-tight text-gray-500 bg-white border border-gray-300 hover:bg-gray-100 hover:text-gray-700">{{ .Data.TotalPages }}</a>
+                </li>
+                {{ end }}
+                
+                <!-- Next Button -->
+                {{ if lt .Data.CurrentPage .Data.TotalPages }}
+                <li>
+                    <a href="/member?page={{ add .Data.CurrentPage 1 }}&limit={{ .Data.Limit }}&search={{ .Data.SearchTerm }}&brand_name={{ .Data.FilterBrand }}&status={{ .Data.FilterStatus }}&sort_by={{ .Data.SortBy }}&sort_order={{ .Data.SortOrder }}"
+                       class="py-2 px-3 leading-tight text-gray-500 bg-white border border-gray-300 rounded-r-lg hover:bg-gray-100 hover:text-gray-700">
+                        Berikutnya <i class="fas fa-chevron-right ml-1"></i>
+                    </a>
+                </li>
+                {{ else }}
+                <li>
+                    <span class="py-2 px-3 leading-tight text-gray-400 bg-white border border-gray-300 rounded-r-lg cursor-not-allowed">
+                        Berikutnya <i class="fas fa-chevron-right ml-1"></i>
+                    </span>
+                </li>
+                {{ end }}
+            </ul>
+        </nav>
+    </div>
+    {{ end }}
+</div>
+
+<!-- Modal Tambah Member (placeholder) -->
+<div id="addMemberModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex items-center justify-center hidden z-50">
+    <div class="relative p-5 border w-full max-w-2xl shadow-lg rounded-md bg-white">
+        <div class="flex justify-between items-center mb-4">
+            <h3 class="text-xl font-semibold text-gray-800">Tambah Member Baru</h3>
+            <button id="closeAddMemberModalBtn" class="text-gray-400 hover:text-gray-600">
+                <i class="fas fa-times fa-lg"></i>
+            </button>
+        </div>
+        <form id="addMemberForm" class="space-y-4">
+            <!-- Fields akan ditambahkan di sini berdasarkan skema database -->
+            <!-- Contoh: -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label for="add_username" class="block text-sm font-medium text-gray-700">Username</label>
+                    <input type="text" name="username" id="add_username" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm" required>
+                </div>
+                <div>
+                    <label for="add_brand_name" class="block text-sm font-medium text-gray-700">Brand</label>
+                     <select name="brand_name" id="add_brand_name" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm bg-white" required>
+                        <option value="" disabled selected>Pilih Brand</option>
+                        {{ range .Data.BrandsForFilter }}
+                            <option value="{{ .Name }}">{{ .Name }}</option>
+                        {{ end }}
+                    </select>
+                </div>
+            </div>
+            <div>
+                <label for="add_phone_number" class="block text-sm font-medium text-gray-700">No. Telepon</label>
+                <input type="text" name="phone_number" id="add_phone_number" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm" required>
+            </div>
+            <div>
+                <label for="add_email" class="block text-sm font-medium text-gray-700">Email</label>
+                <input type="email" name="email" id="add_email" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+            </div>
+            
+            <hr class="my-6">
+            <p class="text-sm text-gray-600 mb-2">Detail Bank:</p>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                 <div>
+                    <label for="add_bank_name" class="block text-sm font-medium text-gray-700">Nama Bank</label>
+                    <input type="text" name="bank_name" id="add_bank_name" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                </div>
+                 <div>
+                    <label for="add_account_name" class="block text-sm font-medium text-gray-700">Nama Rekening</label>
+                    <input type="text" name="account_name" id="add_account_name" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                </div>
+                 <div>
+                    <label for="add_account_no" class="block text-sm font-medium text-gray-700">Nomor Rekening</label>
+                    <input type="text" name="account_no" id="add_account_no" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                </div>
+            </div>
+
+            <hr class="my-6">
+            <p class="text-sm text-gray-600 mb-2">Informasi Lain:</p>
+             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label for="add_status" class="block text-sm font-medium text-gray-700">Status Member</label>
+                    <select name="status" id="add_status" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm bg-white">
+                        <option value="New Deposit">New Deposit</option>
+                        <option value="Redeposit">Redeposit</option>
+                        <!-- Tambah status lain jika ada -->
+                    </select>
+                </div>
+                <div>
+                    <label for="add_membership_status" class="block text-sm font-medium text-gray-700">Status Membership</label>
+                    <input type="text" name="membership_status" id="add_membership_status" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm" placeholder="Contoh: REGULER">
+                </div>
+            </div>
+            <div>
+                <label for="add_crm_info" class="block text-sm font-medium text-gray-700">Pilih CRM</label>
+                <select name="crm_info" id="add_crm_info" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm bg-white">
+                    <option value="">Tidak Ditugaskan</option>
+                    {{ range .Data.CRMAssignees }} {{/* Asumsi CRMAssignees akan ada di .Data */}}
+                        <option value="{{ .Username }}">{{ .Name }} ({{ .Username }})</option>
+                    {{ end }}
+                </select>
+            </div>
+             <div>
+                <label for="add_ip_address" class="block text-sm font-medium text-gray-700">Alamat IP</label>
+                <input type="text" name="ip_address" id="add_ip_address" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+            </div>
+            <div>
+                <label for="add_saldo" class="block text-sm font-medium text-gray-700">Saldo</label>
+                <input type="text" name="saldo" id="add_saldo" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm" placeholder="Contoh: Rp 100.000">
+            </div>
+             <div>
+                <label for="add_join_date" class="block text-sm font-medium text-gray-700">Tanggal Daftar</label>
+                <input type="text" name="join_date" id="add_join_date" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm" placeholder="Contoh: 21/05/2025 0:32:34">
+            </div>
+            <!-- Tambahkan field lain: last_login, membership_email, turnover, win_loss, points, referral, uplink -->
+            
+            <div class="pt-4 flex justify-end">
+                <button type="button" id="cancelAddMemberBtn" class="mr-2 px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300">Batal</button>
+                <button type="submit" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">Simpan Member</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Modal Edit Member (placeholder) -->
+<div id="editMemberModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex items-center justify-center hidden z-50">
+    <div class="relative p-5 border w-full max-w-lg shadow-lg rounded-md bg-white">
+         <div class="flex justify-between items-center mb-4">
+            <h3 class="text-xl font-semibold text-gray-800">Edit Nomor Telepon Member</h3>
+            <button id="closeEditMemberModalBtn" class="text-gray-400 hover:text-gray-600">
+                <i class="fas fa-times fa-lg"></i>
+            </button>
+        </div>
+        <form id="editMemberForm" class="space-y-4">
+            <input type="hidden" name="memberId" id="edit_memberId">
+            <div>
+                <label for="edit_phoneNumber" class="block text-sm font-medium text-gray-700">Nomor Telepon Baru</label>
+                <input type="text" name="phoneNumber" id="edit_phoneNumber" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm" required>
+            </div>
+            <div class="pt-4 flex justify-end">
+                <button type="button" id="cancelEditMemberBtn" class="mr-2 px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300">Batal</button>
+                <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Simpan Perubahan</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Modal Ubah CRM -->
+<div id="changeCrmModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex items-center justify-center hidden z-50">
+    <div class="relative p-5 border w-full max-w-md shadow-lg rounded-md bg-white">
+        <div class="flex justify-between items-center mb-4">
+            <h3 class="text-xl font-semibold text-gray-800">Ubah CRM untuk Member</h3>
+            <button id="closeChangeCrmModalBtn" class="text-gray-400 hover:text-gray-600">
+                <i class="fas fa-times fa-lg"></i>
+            </button>
+        </div>
+        <form id="changeCrmForm" class="space-y-4">
+            <input type="hidden" name="memberId" id="change_crm_memberId">
+            <div>
+                <label for="change_crm_assignee" class="block text-sm font-medium text-gray-700">Pilih CRM Baru</label>
+                <select name="crm_info" id="change_crm_assignee" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm bg-white" required>
+                    <option value="">Tidak Ditugaskan</option>
+                    {{ range .Data.CRMAssignees }} {{/* Asumsi CRMAssignees akan ada di .Data */}}
+                        <option value="{{ .Username }}">{{ .Name }} ({{ .Username }})</option>
+                    {{ end }}
+                </select>
+            </div>
+            <div class="pt-4 flex justify-end">
+                <button type="button" id="cancelChangeCrmBtn" class="mr-2 px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300">Batal</button>
+                <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Simpan Perubahan CRM</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Logika untuk tombol Tambah Member (Modal)
+    const addMemberBtn = document.getElementById('addMemberBtn');
+    const addMemberModal = document.getElementById('addMemberModal');
+    const closeAddMemberModalBtn = document.getElementById('closeAddMemberModalBtn');
+    const cancelAddMemberBtn = document.getElementById('cancelAddMemberBtn');
+    const addMemberForm = document.getElementById('addMemberForm');
+
+    if(addMemberBtn) {
+        addMemberBtn.addEventListener('click', function() {
+            if(addMemberModal) addMemberModal.classList.remove('hidden');
+        });
+    }
+    if(closeAddMemberModalBtn) {
+        closeAddMemberModalBtn.addEventListener('click', function() {
+            if(addMemberModal) addMemberModal.classList.add('hidden');
+        });
+    }
+    if(cancelAddMemberBtn) {
+        cancelAddMemberBtn.addEventListener('click', function() {
+            if(addMemberModal) addMemberModal.classList.add('hidden');
+        });
+    }
+    if(addMemberForm) {
+        addMemberForm.addEventListener('submit', async function(event) {
+            event.preventDefault();
+            const formData = new FormData(addMemberForm);
+            const data = Object.fromEntries(formData.entries());
+
+            // TODO: Kirim data ke server (POST /member)
+            console.log("Data tambah member:", data);
+            try {
+                const response = await fetch('/member', { // Sesuaikan dengan rute Anda
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(data),
+                });
+                const result = await response.json();
+                if (response.ok && result.success) {
+                    alert(result.message || 'Member berhasil ditambahkan!');
+                    addMemberModal.classList.add('hidden');
+                    window.location.reload(); // Refresh halaman
+                } else {
+                    alert(result.message || 'Gagal menambahkan member.');
+                }
+            } catch (error) {
+                console.error('Error adding member:', error);
+                alert('Terjadi kesalahan saat menambahkan member.');
+            }
+        });
+    }
+
+    // Logika untuk tombol Edit Member (Modal)
+    const editMemberBtns = document.querySelectorAll('.editMemberBtn');
+    const editMemberModal = document.getElementById('editMemberModal');
+    const closeEditMemberModalBtn = document.getElementById('closeEditMemberModalBtn');
+    const cancelEditMemberBtn = document.getElementById('cancelEditMemberBtn');
+    const editMemberForm = document.getElementById('editMemberForm');
+    const editMemberIdInput = document.getElementById('edit_memberId');
+    const editPhoneNumberInput = document.getElementById('edit_phoneNumber');
+
+    editMemberBtns.forEach(btn => {
+        btn.addEventListener('click', function() {
+            const memberId = this.dataset.id;
+            const currentPhone = this.dataset.phone;
+            if(editMemberIdInput) editMemberIdInput.value = memberId;
+            if(editPhoneNumberInput) editPhoneNumberInput.value = currentPhone;
+            if(editMemberModal) editMemberModal.classList.remove('hidden');
+        });
+    });
+
+    if(closeEditMemberModalBtn) {
+        closeEditMemberModalBtn.addEventListener('click', function() {
+            if(editMemberModal) editMemberModal.classList.add('hidden');
+        });
+    }
+    if(cancelEditMemberBtn) {
+        cancelEditMemberBtn.addEventListener('click', function() {
+            if(editMemberModal) editMemberModal.classList.add('hidden');
+        });
+    }
+    if(editMemberForm) {
+        editMemberForm.addEventListener('submit', async function(event) {
+            event.preventDefault();
+            const memberId = editMemberIdInput.value;
+            const phoneNumber = editPhoneNumberInput.value;
+
+            // TODO: Kirim data ke server (misalnya PUT /member/{id}/phone)
+            console.log("Data edit member:", { memberId, phoneNumber });
+            try {
+                const response = await fetch(`/member/${memberId}/phone`, { // Rute contoh
+                    method: 'PUT', // atau POST, sesuaikan dengan backend
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ phoneNumber: phoneNumber }),
+                });
+                const result = await response.json();
+                if (response.ok && result.success) {
+                    alert(result.message || 'Nomor telepon berhasil diperbarui!');
+                    editMemberModal.classList.add('hidden');
+                    window.location.reload();
+                } else {
+                    alert(result.message || 'Gagal memperbarui nomor telepon.');
+                }
+            } catch (error) {
+                console.error('Error updating phone number:', error);
+                alert('Terjadi kesalahan saat memperbarui nomor telepon.');
+            }
+        });
+    }
+
+    // Logika untuk Modal Ubah CRM
+    const changeCrmBtns = document.querySelectorAll('.changeCrmBtn');
+    const changeCrmModal = document.getElementById('changeCrmModal');
+    const closeChangeCrmModalBtn = document.getElementById('closeChangeCrmModalBtn');
+    const cancelChangeCrmBtn = document.getElementById('cancelChangeCrmBtn');
+    const changeCrmForm = document.getElementById('changeCrmForm');
+    const changeCrmMemberIdInput = document.getElementById('change_crm_memberId');
+    const changeCrmAssigneeSelect = document.getElementById('change_crm_assignee');
+
+    changeCrmBtns.forEach(btn => {
+        btn.addEventListener('click', function() {
+            const memberId = this.dataset.id;
+            const currentCrm = this.dataset.crm;
+            if(changeCrmMemberIdInput) changeCrmMemberIdInput.value = memberId;
+            if(changeCrmAssigneeSelect) changeCrmAssigneeSelect.value = currentCrm || ""; // Set ke "" jika currentCrm kosong/null
+            if(changeCrmModal) changeCrmModal.classList.remove('hidden');
+        });
+    });
+
+    if(closeChangeCrmModalBtn) {
+        closeChangeCrmModalBtn.addEventListener('click', function() {
+            if(changeCrmModal) changeCrmModal.classList.add('hidden');
+        });
+    }
+
+    if(cancelChangeCrmBtn) {
+        cancelChangeCrmBtn.addEventListener('click', function() {
+            if(changeCrmModal) changeCrmModal.classList.add('hidden');
+        });
+    }
+
+    if(changeCrmForm) {
+        changeCrmForm.addEventListener('submit', async function(event) {
+            event.preventDefault();
+            const memberId = changeCrmMemberIdInput.value;
+            const crmUsername = changeCrmAssigneeSelect.value;
+
+            try {
+                const response = await fetch(`/member/${memberId}/crm`, { 
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ crm_username: crmUsername }),
+                });
+                const result = await response.json();
+                if (response.ok && result.success) {
+                    alert(result.message || 'CRM berhasil diperbarui!');
+                    changeCrmModal.classList.add('hidden');
+                    window.location.reload();
+                } else {
+                    alert(result.message || 'Gagal memperbarui CRM.');
+                }
+            } catch (error) {
+                console.error('Error updating CRM:', error);
+                alert('Terjadi kesalahan saat memperbarui CRM.');
+            }
+        });
+    }
+});
+</script>
+
+{{end}}
